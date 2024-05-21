@@ -48,23 +48,26 @@ def movebase_client():
  
     client.wait_for_server()
     
-    goal1 = rospy.get_param("~goal1")
-    goal2 = rospy.get_param("~goal2")
-
-    goal_pose1 = create_pose_stamped(goal1['x'], goal1['y'], radians(goal1['w']))
-    goal_pose2 = create_pose_stamped(goal2['x'], goal2['y'], radians(goal2['w']))
-
+    goals = rospy.get_param("~goals", [])
+    waypoints = []
+    for goal in goals:
+        goal_pose = create_pose_stamped(goal['x'], goal['y'], radians(goal['w']))
+        rospy.loginfo("goal_pose" + str(goal_pose))
+        waypoints.append(goal_pose)
     # --- Follow Waypoints ---
-    waypoints = [goal_pose1, goal_pose2]
-    for i in range(2):
-        client.send_goal(waypoints[i])
-        wait = client.wait_for_result(rospy.Duration(20))
-        if not wait:
-            rospy.logerr("Action server not available!")
-            rospy.signal_shutdown("Action server not available!")
+    rospy.loginfo("waypoints" + str(waypoints))
+    for goal_pose in waypoints:
+        client.send_goal(goal_pose)
+        wait = client.wait_for_result(rospy.Duration(60))
+        while not wait:
+            rospy.logerr("I am lost. I need to be relocalized in the next 30 seconds.")
+            Time.sleep(30)
+            client.send_goal(goal_pose)
+            wait = client.wait_for_result(rospy.Duration(60))
         else:
             rospy.loginfo("Goal execution done!")   
-
+    
+    rospy.loginfo("All waypoints executed!")
 if __name__ == '__main__':
     try:
         rospy.init_node('movebase_client_waypoints')
